@@ -14,8 +14,8 @@ services:
     plan: free
     rootDir: backend
     buildCommand: npm ci && npm run build
-    preDeployCommand: node scripts/ensure-schema.cjs
-    startCommand: npm run start
+    # Free tier: no preDeployCommand — schema runs once per start (idempotent).
+    startCommand: node scripts/ensure-schema.cjs && npm run start
     healthCheckPath: /api/health
     envVars:
       - fromGroup: ai-phone-shared
