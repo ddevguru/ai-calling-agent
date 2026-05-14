@@ -1,21 +1,27 @@
 # Render Blueprint — https://render.com/docs/infrastructure-as-code
-# Free-ish stack: Render free web services + free Groq (https://console.groq.com) for text answers.
-# DB: use Neon free (https://neon.tech) → paste connection string as DATABASE_URL in the dashboard.
+# Web + realtime gateway (Node). Postgres is provisioned below and wired via DATABASE_URL.
+# Groq: set GROQ_API_KEY in the dashboard (sync: false).
 version: "1"
+
+databases:
+  - name: ai-phone-db
+    plan: free
+    databaseName: ai_phone
+    user: ai_phone
+
 envVarGroups:
   - name: ai-phone-shared
     envVars:
       - key: JWT_SECRET
         generateValue: true
+
 services:
   - type: web
     name: ai-phone-web
     runtime: node
     plan: free
     rootDir: backend
-    # npm ci needs package-lock.json in repo; npm install works if lockfile missing.
-    buildCommand: npm install && npm run build
-    # Free tier: no preDeployCommand — schema runs once per start (idempotent).
+    buildCommand: npm ci && npm run build
     startCommand: node scripts/ensure-schema.cjs && npm run start
     healthCheckPath: /api/health
     envVars:
@@ -23,17 +29,20 @@ services:
       - key: NODE_VERSION
         value: "22"
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: ai-phone-db
+          property: connectionString
       - key: GROQ_API_KEY
         sync: false
       - key: GROQ_MODEL
         value: llama-3.1-8b-instant
+
   - type: web
     name: ai-phone-realtime-gateway
     runtime: node
     plan: free
     rootDir: backend
-    buildCommand: npm install
+    buildCommand: npm ci
     startCommand: npm run gateway
     envVars:
       - fromGroup: ai-phone-shared
