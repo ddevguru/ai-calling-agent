@@ -18,6 +18,7 @@ services:
     startCommand: npm run start
     healthCheckPath: /api/health
     envVars:
+      - fromGroup: ai-phone-shared
       - key: NODE_VERSION
         value: "22"
       - key: DATABASE_URL
@@ -26,8 +27,6 @@ services:
         sync: false
       - key: GROQ_MODEL
         value: llama-3.1-8b-instant
-    envVarGroups:
-      - name: ai-phone-shared
   - type: web
     name: ai-phone-realtime-gateway
     runtime: node
@@ -36,11 +35,10 @@ services:
     buildCommand: npm ci
     startCommand: npm run gateway
     envVars:
+      - fromGroup: ai-phone-shared
       - key: NODE_VERSION
         value: "22"
       - key: OPENAI_API_KEY
         sync: false
       - key: OPENAI_REALTIME_MODEL
         value: gpt-4o-realtime-preview
-    envVarGroups:
-      - name: ai-phone-shared
