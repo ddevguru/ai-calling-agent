@@ -1,0 +1,49 @@
+# Render Blueprint — https://render.com/docs/infrastructure-as-code
+# Free-ish stack: Render free web services + free Groq (https://console.groq.com) for text answers.
+# DB: use Neon free (https://neon.tech) → paste connection string as DATABASE_URL in the dashboard.
+version: "1"
+
+envVarGroups:
+  - name: ai-phone-shared
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true
+
+services:
+  - type: web
+    name: ai-phone-web
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm ci && npm run build
+    preDeployCommand: node scripts/ensure-schema.cjs
+    startCommand: npm run start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATABASE_URL
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: llama-3.1-8b-instant
+    envVarGroups:
+      - name: ai-phone-shared
+
+  - type: web
+    name: ai-phone-realtime-gateway
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm ci
+    startCommand: npm run gateway
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_REALTIME_MODEL
+        value: gpt-4o-realtime-preview
+    envVarGroups:
+      - name: ai-phone-shared
