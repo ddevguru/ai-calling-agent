@@ -2,13 +2,11 @@
 # Free-ish stack: Render free web services + free Groq (https://console.groq.com) for text answers.
 # DB: use Neon free (https://neon.tech) → paste connection string as DATABASE_URL in the dashboard.
 version: "1"
-
 envVarGroups:
   - name: ai-phone-shared
     envVars:
       - key: JWT_SECRET
         generateValue: true
-
 services:
   - type: web
     name: ai-phone-web
@@ -30,7 +28,6 @@ services:
         value: llama-3.1-8b-instant
     envVarGroups:
       - name: ai-phone-shared
-
   - type: web
     name: ai-phone-realtime-gateway
     runtime: node
