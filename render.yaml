@@ -13,7 +13,8 @@ services:
     runtime: node
     plan: free
     rootDir: backend
-    buildCommand: npm ci && npm run build
+    # npm ci needs package-lock.json in repo; npm install works if lockfile missing.
+    buildCommand: npm install && npm run build
     # Free tier: no preDeployCommand — schema runs once per start (idempotent).
     startCommand: node scripts/ensure-schema.cjs && npm run start
     healthCheckPath: /api/health
@@ -32,7 +33,7 @@ services:
     runtime: node
     plan: free
     rootDir: backend
-    buildCommand: npm ci
+    buildCommand: npm install
     startCommand: npm run gateway
     envVars:
       - fromGroup: ai-phone-shared
