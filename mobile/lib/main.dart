@@ -14,11 +14,12 @@ import 'telecom_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final auraTheme = buildAuraTheme();
   SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
+    SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.light,
-      systemNavigationBarColor: Color(0xFF0F1419),
+      systemNavigationBarColor: auraTheme.scaffoldBackgroundColor,
       systemNavigationBarIconBrightness: Brightness.light,
     ),
   );

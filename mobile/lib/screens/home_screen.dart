@@ -19,31 +19,81 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   var _index = 0;
-  StreamSubscription<Map<String, Object?>>? _teleSub;
+  StreamSubscription<Map<String, dynamic>>? _teleSub;
   final _dial = TextEditingController();
   var _screening = false;
   var _defaultDialer = false;
   String? _line;
   var _calls = const <Map<String, Object?>>[];
+  var _lastIncomingVoiceMs = 0;
+
+  static const _launchStartVoice = 'start_voice';
+  static const _launchPromptIncoming = 'prompt_incoming';
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _refreshTelecomStatus();
       _listenTelecom();
       _loadCalls();
+      _consumePendingLaunch();
     });
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _teleSub?.cancel();
     _dial.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _consumePendingLaunch();
+    }
+  }
+
+  Future<void> _consumePendingLaunch() async {
+    if (!mounted) return;
+    final telecom = TelecomScope.of(context);
+    final raw = await telecom.consumePendingLaunch();
+    final action = raw['action']?.toString();
+    final handle = raw['handle']?.toString();
+    if (!mounted) return;
+    if (action == _launchStartVoice) {
+      await _launchIncomingVoice(handle);
+    } else if (action == _launchPromptIncoming) {
+      await _promptIncoming(handle ?? 'Unknown');
+    }
+  }
+
+  Future<void> _launchIncomingVoice(String? handle) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (now - _lastIncomingVoiceMs < 2800) return;
+    _lastIncomingVoiceMs = now;
+    if (!mounted) return;
+    final auth = AuthScope.of(context);
+    if (auth.token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sign in so Aura can run the AI voice session.')),
+      );
+      return;
+    }
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => VoiceSessionScreen(
+          autoStart: true,
+          incomingCallerHint: handle,
+        ),
+      ),
+    );
   }
 
   Future<void> _refreshTelecomStatus() async {
@@ -67,6 +117,10 @@ class _HomeScreenState extends State<HomeScreen> {
         final handle = evt['handle']?.toString() ?? 'Unknown';
         await _promptIncoming(handle);
       }
+      if (type == 'incoming_answered') {
+        final handle = evt['handle']?.toString();
+        await _launchIncomingVoice(handle);
+      }
     });
   }
 
@@ -78,24 +132,35 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (ctx) {
         return AlertDialog(
           title: const Text('Incoming call'),
-          content: Text('Allow Aura to answer for $handle?'),
+          content: Text('Answer with Aura AI for $handle?'),
           actions: [
             TextButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                await TelecomScope.of(context).rejectRingingCall();
+              },
+              child: const Text('Decline'),
+            ),
+            TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('No'),
+              child: const Text('Not now'),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Approved — connect realtime audio next (gateway + InCall UI).',
+                final ok = await TelecomScope.of(context).requestAnswerWithAi();
+                if (!mounted) return;
+                if (!ok) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Connecting… If nothing happens, set Aura as the default Phone app (dialer).',
+                      ),
                     ),
-                  ),
-                );
+                  );
+                }
               },
-              child: const Text('Yes, answer with AI'),
+              child: const Text('Answer with AI'),
             ),
           ],
         );
@@ -238,6 +303,7 @@ class _AssistantPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
+    final cs = Theme.of(context).colorScheme;
     return SafeArea(
       key: const ValueKey('assistant'),
       child: ListView(
@@ -249,8 +315,8 @@ class _AssistantPage extends StatelessWidget {
               .slideY(begin: 0.04, end: 0),
           const SizedBox(height: 8),
           Text(
-            'Muted UI, deliberate motion, real SIM audio path.',
-            style: t.bodyMedium?.copyWith(color: const Color(0xFF9AA4B2)),
+            'Inbound detection, notifications, programmable answer + realtime voice. Smart call prompts use Groq/Gemini when configured.',
+            style: t.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
           ),
           const SizedBox(height: 18),
           _StatusCard(
@@ -262,11 +328,11 @@ class _AssistantPage extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           _StatusCard(
-            title: 'Default dialer (optional)',
+            title: 'Default dialer',
             ok: defaultDialer,
             subtitle: defaultDialer
-                ? 'InCallService UI can attach to calls.'
-                : 'Needed for full in-call control on many devices.',
+                ? 'Aura can answer ringing SIM calls and bind InCall UI.'
+                : 'Set Aura as the Phone app so incoming calls can be answered for AI.',
             actionLabel: 'Request role',
             onAction: onDialerRole,
           ),
@@ -296,8 +362,8 @@ class _AssistantPage extends StatelessWidget {
                   Text('Realtime voice', style: t.titleMedium),
                   const SizedBox(height: 8),
                   Text(
-                    'Mic → gateway → GPT‑4o Realtime → speaker. Set REALTIME_URL (wss on Render).',
-                    style: t.bodySmall?.copyWith(color: const Color(0xFF9AA4B2)),
+                    'Mic → gateway → GPT‑4o Realtime → speaker. Foreground service keeps the session alive while Aura is in the background.',
+                    style: t.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                   ),
                   const SizedBox(height: 12),
                   SizedBox(
@@ -340,6 +406,7 @@ class _StatusCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
+    final cs = Theme.of(context).colorScheme;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -351,12 +418,12 @@ class _StatusCard extends StatelessWidget {
                 Expanded(child: Text(title, style: t.titleMedium)),
                 Icon(
                   ok ? Icons.check_circle : Icons.radio_button_unchecked,
-                  color: ok ? const Color(0xFF6B8A7A) : const Color(0xFF9AA4B2),
+                  color: ok ? cs.primary : cs.onSurfaceVariant,
                 ),
               ],
             ),
             const SizedBox(height: 8),
-            Text(subtitle, style: t.bodyMedium?.copyWith(color: const Color(0xFF9AA4B2))),
+            Text(subtitle, style: t.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
             const SizedBox(height: 12),
             Align(
               alignment: Alignment.centerLeft,
@@ -383,6 +450,7 @@ class _DialPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
+    final cs = Theme.of(context).colorScheme;
     return SafeArea(
       key: const ValueKey('dial'),
       child: Padding(
@@ -411,7 +479,7 @@ class _DialPage extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               'Uses ACTION_CALL — requires CALL_PHONE permission.',
-              style: t.bodySmall?.copyWith(color: const Color(0xFF9AA4B2)),
+              style: t.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             ),
           ],
         ),
@@ -429,6 +497,7 @@ class _HistoryPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
+    final cs = Theme.of(context).colorScheme;
     return SafeArea(
       key: const ValueKey('history'),
       child: Column(
@@ -450,7 +519,7 @@ class _HistoryPage extends StatelessWidget {
                 ? Center(
                     child: Text(
                       'No logs yet — complete a call to see history.',
-                      style: t.bodyMedium?.copyWith(color: const Color(0xFF9AA4B2)),
+                      style: t.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
                       textAlign: TextAlign.center,
                     ),
                   )

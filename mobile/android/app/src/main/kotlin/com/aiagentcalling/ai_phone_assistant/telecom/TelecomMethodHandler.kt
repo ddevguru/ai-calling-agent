@@ -126,6 +126,31 @@ class TelecomMethodHandler(
                 result.success(true)
             }
 
+            "requestAnswerWithAi" -> {
+                val ok = CallDirector.requestAnswerWithAi()
+                result.success(ok)
+            }
+
+            "rejectRingingCall" -> {
+                CallDirector.clearPendingAnswer()
+                val ok = AiInCallService.tryRejectRinging()
+                result.success(ok)
+            }
+
+            "consumePendingLaunch" -> {
+                result.success(LaunchIntentStore.consume())
+            }
+
+            "startAssistantForeground" -> {
+                AssistantForegroundService.start(activity.applicationContext)
+                result.success(true)
+            }
+
+            "stopAssistantForeground" -> {
+                AssistantForegroundService.stop(activity.applicationContext)
+                result.success(true)
+            }
+
             else -> result.notImplemented()
         }
     }

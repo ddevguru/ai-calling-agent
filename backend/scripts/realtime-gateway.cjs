@@ -2,17 +2,29 @@
 const http = require("http");
 const { WebSocketServer, WebSocket } = require("ws");
 const jwt = require("jsonwebtoken");
-require("dotenv").config({ path: ".env.local" });
-require("dotenv").config();
+// On Render, env vars come from the dashboard / blueprint. Loading .env files here
+// can overwrite them with empty values if a stray .env exists in the deploy bundle.
+if (!process.env.RENDER_SERVICE_ID && process.env.RENDER !== "true") {
+  require("dotenv").config({ path: ".env.local" });
+  require("dotenv").config();
+}
 
 const port = Number(process.env.PORT || process.env.REALTIME_GATEWAY_PORT || 4000);
 const model =
   process.env.OPENAI_REALTIME_MODEL || "gpt-4o-realtime-preview";
-const openaiKey = process.env.OPENAI_API_KEY;
-const jwtSecret = process.env.JWT_SECRET;
+const openaiKey = process.env.OPENAI_API_KEY?.trim();
+const jwtSecret = process.env.JWT_SECRET?.trim();
 
-if (!openaiKey || !jwtSecret) {
-  console.error("Missing OPENAI_API_KEY or JWT_SECRET");
+if (!openaiKey) {
+  console.error(
+    "Missing OPENAI_API_KEY — set it on this Render service (Environment → ai-phone-realtime-gateway).",
+  );
+  process.exit(1);
+}
+if (!jwtSecret) {
+  console.error(
+    "Missing JWT_SECRET — ensure env group ai-phone-shared is linked, or set JWT_SECRET to match ai-phone-web.",
+  );
   process.exit(1);
 }
 

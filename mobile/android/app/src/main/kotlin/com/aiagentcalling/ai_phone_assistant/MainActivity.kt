@@ -1,6 +1,9 @@
 package com.aiagentcalling.ai_phone_assistant
 
+import android.content.Intent
+import android.os.Bundle
 import com.aiagentcalling.ai_phone_assistant.telecom.AudioBridge
+import com.aiagentcalling.ai_phone_assistant.telecom.LaunchIntentStore
 import com.aiagentcalling.ai_phone_assistant.telecom.TelecomBridge
 import com.aiagentcalling.ai_phone_assistant.telecom.TelecomMethodHandler
 import io.flutter.embedding.android.FlutterActivity
@@ -14,6 +17,17 @@ class MainActivity : FlutterActivity() {
         private const val METHODS = "com.aiagentcalling.telecom/methods"
         private const val EVENTS = "com.aiagentcalling.telecom/events"
         private const val AUDIO_EVENTS = "com.aiagentcalling.telecom/audio"
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        LaunchIntentStore.ingest(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        LaunchIntentStore.ingest(intent)
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {

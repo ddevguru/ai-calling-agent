@@ -1,19 +1,28 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../api/backend_api.dart';
 import '../app_scope.dart';
+import '../assistant/assistant_voice_controller.dart';
 import '../config.dart';
-import '../realtime/realtime_voice_session.dart';
 
 class VoiceSessionScreen extends StatefulWidget {
-  const VoiceSessionScreen({super.key});
+  const VoiceSessionScreen({
+    super.key,
+    this.autoStart = false,
+    this.incomingCallerHint,
+  });
+
+  final bool autoStart;
+  final String? incomingCallerHint;
 
   @override
   State<VoiceSessionScreen> createState() => _VoiceSessionScreenState();
 }
 
 class _VoiceSessionScreenState extends State<VoiceSessionScreen> {
-  RealtimeVoiceSession? _session;
+  AssistantVoiceController? _voice;
   var _running = false;
   var _line = '';
   final _log = StringBuffer();
@@ -23,7 +32,13 @@ class _VoiceSessionScreenState extends State<VoiceSessionScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadProfiles());
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _loadProfiles();
+      if (!mounted) return;
+      if (widget.autoStart) {
+        await _toggle();
+      }
+    });
   }
 
   Future<void> _loadProfiles() async {
@@ -50,7 +65,11 @@ class _VoiceSessionScreenState extends State<VoiceSessionScreen> {
 
   @override
   void dispose() {
-    _session?.stop();
+    final v = _voice;
+    _voice = null;
+    if (v != null) {
+      unawaited(v.stop());
+    }
     super.dispose();
   }
 
@@ -61,64 +80,43 @@ class _VoiceSessionScreenState extends State<VoiceSessionScreen> {
     if (token == null) return;
 
     if (_running) {
-      await _session?.stop();
+      await _voice?.stop();
+      if (!mounted) return;
       setState(() {
         _running = false;
-        _session = null;
+        _voice = null;
         _line = 'idle';
       });
       return;
     }
 
-    final p = _selected;
-    var instructions = p?['instructions']?.toString() ??
-        'You are a calm phone assistant. Keep replies short and natural.';
-    final voice = p?['voice_id']?.toString() ?? 'marin';
-    final lang = p?['language']?.toString() ?? 'en';
+    final ctrl = AssistantVoiceController(
+      telecom: telecom,
+      token: token,
+      onStatus: (s) {
+        if (mounted) setState(() => _line = s);
+      },
+      onLog: (m) {
+        _log.writeln(m);
+        if (_log.length > 4000) {
+          final t = _log.toString();
+          _log.clear();
+          _log.write(t.substring(t.length - 3500));
+        }
+        if (mounted) setState(() {});
+      },
+    );
 
-    setState(() => _line = 'optimizing prompt…');
-    try {
-      final tuned = await BackendApi(token).postJson(
-        '/api/assistant/call-instructions',
-        {
-          'baseInstructions': instructions,
-          'language': lang,
-        },
-      );
-      final ins = tuned['instructions']?.toString().trim();
-      if (ins != null && ins.isNotEmpty) {
-        instructions = ins;
-      }
-    } catch (e) {
-      _log.writeln('call-instructions: $e (using base profile)');
-      if (mounted) setState(() {});
-    }
-
-    final session = RealtimeVoiceSession(telecom);
-    session.onStatus = (s) {
-      if (mounted) setState(() => _line = s);
-    };
-    session.onLog = (m) {
-      _log.writeln(m);
-      if (_log.length > 4000) {
-        final t = _log.toString();
-        _log.clear();
-        _log.write(t.substring(t.length - 3500));
-      }
-      if (mounted) setState(() {});
-    };
-
+    if (!mounted) return;
     setState(() {
-      _session = session;
+      _voice = ctrl;
       _running = true;
       _line = 'starting…';
     });
 
-    await session.start(
-      jwt: token,
-      instructions: instructions,
-      voice: voice,
-      languageHint: lang,
+    await ctrl.start(
+      incomingCallerE164: widget.incomingCallerHint,
+      profileOverride: _selected,
     );
   }
 
@@ -132,7 +130,7 @@ class _VoiceSessionScreenState extends State<VoiceSessionScreen> {
         children: [
           Text(
             'Gateway: $kRealtimeUrl',
-            style: t.bodySmall?.copyWith(color: const Color(0xFF9AA4B2)),
+            style: t.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
           ),
           const SizedBox(height: 16),
           if (_profiles.isNotEmpty) ...[

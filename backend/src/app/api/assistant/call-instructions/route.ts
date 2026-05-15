@@ -1,4 +1,5 @@
 import { bearerFromAuthHeader, verifyAccessToken } from "@/lib/auth";
+import { geminiGenerateText, getGeminiApiKey } from "@/lib/gemini";
 import { getGroqApiKey, groqChatCompletion } from "@/lib/groq";
 import { jsonError, jsonOk } from "@/lib/http";
 import { z } from "zod";
@@ -41,14 +42,6 @@ export async function POST(req: Request) {
 
   const base = body.baseInstructions.trim();
 
-  if (!getGroqApiKey()) {
-    return jsonOk({
-      instructions: base,
-      augmented: false,
-      hint: "Set GROQ_API_KEY on the server for smarter call prompts (free: console.groq.com).",
-    });
-  }
-
   const userPayload = [
     `Preferred spoken language (ISO): ${body.language?.trim() || "en"}`,
     `Caller E.164 (optional): ${body.callerPhoneE164?.trim() || "unknown"}`,
@@ -58,27 +51,72 @@ export async function POST(req: Request) {
     base,
   ].join("\n");
 
-  const r = await groqChatCompletion({
-    messages: [
-      { role: "system", content: META_SYSTEM },
-      { role: "user", content: userPayload },
-    ],
-    model: body.model,
-    maxTokens: 1800,
-    temperature: 0.35,
-  });
+  const noKeyHint =
+    "Add a free API key on the server: GROQ_API_KEY (console.groq.com) or GEMINI_API_KEY (aistudio.google.com).";
 
-  if (!r.ok) {
-    console.error("call-instructions Groq:", r.status, r.detail);
-    return jsonOk({ instructions: base, augmented: false });
+  if (!getGroqApiKey() && !getGeminiApiKey()) {
+    return jsonOk({
+      instructions: base,
+      augmented: false,
+      hint: noKeyHint,
+    });
   }
 
-  let text = r.text;
+  /** Prefer Groq (fast); fall back to Gemini when Groq missing or errors. */
+  let augmentedModel: string | undefined;
+  let text = "";
+
+  if (getGroqApiKey()) {
+    const r = await groqChatCompletion({
+      messages: [
+        { role: "system", content: META_SYSTEM },
+        { role: "user", content: userPayload },
+      ],
+      model: body.model,
+      maxTokens: 1800,
+      temperature: 0.35,
+    });
+    if (r.ok && r.text) {
+      text = r.text;
+      augmentedModel = r.model;
+    } else if (!r.ok) {
+      console.error("call-instructions Groq:", r.status, r.detail);
+    }
+  }
+
+  if (!text && getGeminiApiKey()) {
+    const g = await geminiGenerateText({
+      systemInstruction: META_SYSTEM,
+      userText: userPayload,
+      model: body.model?.startsWith("gemini") ? body.model : undefined,
+      temperature: 0.35,
+      maxOutputTokens: 2048,
+    });
+    if (g.ok && g.text) {
+      text = g.text;
+      augmentedModel = g.model;
+    } else if (!g.ok) {
+      console.error("call-instructions Gemini:", g.status, g.detail);
+    }
+  }
+
   if (!text) {
-    return jsonOk({ instructions: base, augmented: false });
+    return jsonOk({
+      instructions: base,
+      augmented: false,
+      hint:
+        getGroqApiKey() || getGeminiApiKey()
+          ? "Smart prompt failed (check server logs); using your base profile."
+          : noKeyHint,
+    });
   }
+
   if (text.length > MAX_OUT) {
     text = text.slice(0, MAX_OUT);
   }
-  return jsonOk({ instructions: text, augmented: true, model: r.model });
+  return jsonOk({
+    instructions: text,
+    augmented: true,
+    model: augmentedModel,
+  });
 }

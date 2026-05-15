@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../app_scope.dart';
+import '../widgets/aura_logo.dart';
+
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key, required this.onBack, required this.onRegistered});
 
@@ -50,6 +52,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    final errColor = Theme.of(context).colorScheme.error;
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: widget.onBack),
@@ -58,11 +62,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(22, 6, 22, 22),
           children: [
+            Center(child: AuraLogo(size: 72, showRing: false)),
+            const SizedBox(height: 16),
             Text('Create your profile', style: t.headlineMedium?.copyWith(fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             Text(
               'Use the same SIM number you will call from.',
-              style: t.bodyMedium?.copyWith(color: const Color(0xFF9AA4B2)),
+              style: t.bodyMedium?.copyWith(color: muted),
             ),
             const SizedBox(height: 22),
             TextField(
@@ -84,7 +90,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
             if (_error != null) ...[
               const SizedBox(height: 12),
-              Text(_error!, style: const TextStyle(color: Color(0xFFB9A6A1))),
+              Text(_error!, style: TextStyle(color: errColor)),
             ],
             const SizedBox(height: 22),
             ElevatedButton(

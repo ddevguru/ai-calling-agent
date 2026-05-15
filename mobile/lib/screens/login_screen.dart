@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../app_scope.dart';
+import '../widgets/aura_logo.dart';
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, required this.onCreateAccount, required this.onSignedIn});
 
@@ -47,16 +49,20 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    final errColor = Theme.of(context).colorScheme.error;
     return Scaffold(
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(22, 28, 22, 22),
           children: [
+            Center(child: AuraLogo(size: 76, showRing: false)),
+            const SizedBox(height: 22),
             Text('Welcome back', style: t.headlineMedium?.copyWith(fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             Text(
               'Sign in with your phone (E.164) and password.',
-              style: t.bodyMedium?.copyWith(color: const Color(0xFF9AA4B2)),
+              style: t.bodyMedium?.copyWith(color: muted),
             ),
             const SizedBox(height: 26),
             TextField(
@@ -72,7 +78,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             if (_error != null) ...[
               const SizedBox(height: 12),
-              Text(_error!, style: const TextStyle(color: Color(0xFFB9A6A1))),
+              Text(_error!, style: TextStyle(color: errColor)),
             ],
             const SizedBox(height: 22),
             ElevatedButton(

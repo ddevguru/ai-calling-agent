@@ -44,6 +44,7 @@ class RealtimeVoiceSession {
       await telecom.shutdownAudio();
       return;
     }
+    await telecom.startAssistantForeground();
     _ch = telecom.connectRealtime(jwt);
     _wsSub = _ch!.stream.listen(
       _onWsMessage,
@@ -152,6 +153,7 @@ class RealtimeVoiceSession {
     await telecom.stopMicStream();
     await telecom.stopSpeaker();
     await telecom.shutdownAudio();
+    await telecom.stopAssistantForeground();
     _pendingSession = null;
     _sessionUpdateSent = false;
     _micPipelineStarted = false;

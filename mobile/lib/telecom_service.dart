@@ -125,6 +125,30 @@ class TelecomService {
     await _methods.invokeMethod('shutdownAudio');
   }
 
+  Future<bool> requestAnswerWithAi() async {
+    final v = await _methods.invokeMethod<bool>('requestAnswerWithAi');
+    return v ?? false;
+  }
+
+  Future<bool> rejectRingingCall() async {
+    final v = await _methods.invokeMethod<bool>('rejectRingingCall');
+    return v ?? false;
+  }
+
+  Future<Map<String, dynamic>> consumePendingLaunch() async {
+    final raw = await _methods.invokeMethod<dynamic>('consumePendingLaunch');
+    if (raw is! Map) return {};
+    return raw.map((k, v) => MapEntry(k.toString(), v));
+  }
+
+  Future<void> startAssistantForeground() async {
+    await _methods.invokeMethod<void>('startAssistantForeground');
+  }
+
+  Future<void> stopAssistantForeground() async {
+    await _methods.invokeMethod<void>('stopAssistantForeground');
+  }
+
   WebSocketChannel connectRealtime(String jwt) {
     final uri = realtimeUriWithToken(jwt);
     return WebSocketChannel.connect(uri);

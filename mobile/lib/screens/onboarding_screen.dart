@@ -38,7 +38,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       _OnboardPage(
         title: 'Realtime voice',
         body:
-            'Stream audio through the gateway to GPT‑4o Realtime with the voice and language you pick.',
+            'Mic flows through your gateway to GPT‑4o for speech. Call prompts are tuned first via Groq or Gemini (free API keys on your server) so replies sound sharper.',
         icon: Icons.graphic_eq,
       ),
     ];
@@ -85,7 +85,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   decoration: BoxDecoration(
                     color: i == _index
                         ? Theme.of(context).colorScheme.primary
-                        : const Color(0xFF2A3441),
+                        : Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.55),
                     borderRadius: BorderRadius.circular(99),
                   ),
                 ),
@@ -142,9 +142,9 @@ class _OnboardPage extends StatelessWidget {
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: const Color(0xFF1B2430),
+              color: Theme.of(context).colorScheme.surfaceContainerHigh,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFF2A3441)),
+              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
             ),
             child: Icon(icon, color: Theme.of(context).colorScheme.primary),
           ),
@@ -153,7 +153,7 @@ class _OnboardPage extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             body,
-            style: t.bodyLarge?.copyWith(color: const Color(0xFF9AA4B2), height: 1.45),
+            style: t.bodyLarge?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.45),
           ),
         ],
       ),

@@ -15,6 +15,7 @@ class AiCallScreeningService : CallScreeningService() {
             callDetails.callDirection == Call.Details.DIRECTION_INCOMING
         if (incoming) {
             TelecomBridge.emitIncomingCall(handle, false)
+            IncomingCallNotifier.show(this, handle)
         }
 
         val response =

@@ -1,6 +1,7 @@
 # Render Blueprint — https://render.com/docs/infrastructure-as-code
 # Web + realtime gateway (Node). Postgres is provisioned below and wired via DATABASE_URL.
-# Groq: set GROQ_API_KEY in the dashboard (sync: false).
+# Dashboard secrets (each service): ai-phone-web → GROQ_API_KEY (and optional GEMINI_API_KEY)
+#   ai-phone-realtime-gateway → OPENAI_API_KEY (required; JWT_SECRET comes from group ai-phone-shared)
 version: "1"
 
 databases:
@@ -36,6 +37,10 @@ services:
         sync: false
       - key: GROQ_MODEL
         value: llama-3.1-8b-instant
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.0-flash
 
   - type: web
     name: ai-phone-realtime-gateway

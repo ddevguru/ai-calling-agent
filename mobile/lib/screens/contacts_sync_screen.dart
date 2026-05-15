@@ -114,7 +114,7 @@ class _ContactsSyncScreenState extends State<ContactsSyncScreen> {
         children: [
           Text(
             'Imports device contacts, parses numbers with the default region you pick, then PUTs to /api/contacts (max 2000 per request — large address books may need batching later).',
-            style: t.bodyMedium?.copyWith(color: const Color(0xFF9AA4B2), height: 1.4),
+            style: t.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.4),
           ),
           const SizedBox(height: 18),
           Text('Default region for parsing', style: t.titleSmall),

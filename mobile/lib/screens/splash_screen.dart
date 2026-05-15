@@ -1,23 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+import '../widgets/aura_logo.dart';
+
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
       body: Container(
         width: double.infinity,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Color(0xFF0F1419),
-              Color(0xFF121A22),
-              Color(0xFF151C24),
+              cs.surfaceContainerLowest,
+              cs.surface,
+              cs.surfaceContainerLow,
             ],
           ),
         ),
@@ -25,7 +28,14 @@ class SplashScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 72),
+              const SizedBox(height: 48),
+              Center(
+                child: const AuraLogo(size: 108, showRing: true)
+                    .animate()
+                    .fadeIn(duration: 380.ms, curve: Curves.easeOut)
+                    .scale(begin: const Offset(0.92, 0.92), end: const Offset(1, 1)),
+              ),
+              const SizedBox(height: 36),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 28),
                 child: Text(
@@ -45,7 +55,7 @@ class SplashScreen extends StatelessWidget {
                 child: Text(
                   'Quiet intelligence for your real SIM calls.',
                   style: t.bodyLarge?.copyWith(
-                    color: const Color(0xFF9AA4B2),
+                    color: cs.onSurfaceVariant,
                     height: 1.35,
                   ),
                 ),

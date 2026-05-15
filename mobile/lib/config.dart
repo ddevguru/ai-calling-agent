@@ -1,14 +1,13 @@
-/// Point to your machine: Android emulator uses 10.0.2.2 for host localhost.
+/// Production (Render). Local dev: `flutter run --dart-define=API_BASE=http://10.0.2.2:3000`
 const String kApiBase = String.fromEnvironment(
   'API_BASE',
-  defaultValue: 'http://10.0.2.2:3000',
+  defaultValue: 'https://ai-phone-web-kytf.onrender.com',
 );
 
-/// Full WebSocket URL to the realtime gateway (ws:// or wss://). Token is appended as `?token=`.
-/// Render: `wss://your-gateway.onrender.com`
+/// WebSocket gateway (`wss://` on Render). Local: `--dart-define=REALTIME_URL=ws://10.0.2.2:4000`
 const String kRealtimeUrl = String.fromEnvironment(
   'REALTIME_URL',
-  defaultValue: 'ws://10.0.2.2:4000',
+  defaultValue: 'wss://ai-phone-realtime-gateway-596h.onrender.com',
 );
 
 Uri realtimeUriWithToken(String jwt) {
